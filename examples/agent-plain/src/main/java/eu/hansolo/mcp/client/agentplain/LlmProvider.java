@@ -5,7 +5,8 @@ import jakarta.enterprise.context.ApplicationScoped;
 
 /**
  * Chooses the model access from the environment. {@code AGENT_FAKE_LLM=true} gives the scripted {@link FakeLlm}; otherwise {@code ANTHROPIC_API_KEY} and
- * {@code ANTHROPIC_MODEL} are required. {@code AGENT_MAX_ROUNDS} (default 8) limits the rounds, {@code ANTHROPIC_MAX_TOKENS} (default 1024) the reply length.
+ * {@code ANTHROPIC_MODEL} are required. {@code ANTHROPIC_BASE_URL} (default {@code https://api.anthropic.com}) points it at another server with the same API, for example a
+ * local Ollama, which accepts any non-empty key. {@code AGENT_MAX_ROUNDS} (default 8) limits the rounds, {@code ANTHROPIC_MAX_TOKENS} (default 1024) the reply length.
  */
 @ApplicationScoped
 public class LlmProvider {
@@ -32,7 +33,8 @@ public class LlmProvider {
         String key   = System.getenv("ANTHROPIC_API_KEY");
         String model = System.getenv("ANTHROPIC_MODEL");
         if (key == null || key.isBlank() || model == null || model.isBlank()) { throw new IllegalStateException("Set ANTHROPIC_API_KEY and ANTHROPIC_MODEL, or AGENT_FAKE_LLM=true for the scripted model."); }
-        return new AnthropicLlm(key, model, intFromEnvironment("ANTHROPIC_MAX_TOKENS", 1024));
+        String baseUrl = System.getenv("ANTHROPIC_BASE_URL");
+        return new AnthropicLlm(baseUrl == null || baseUrl.isBlank() ? "https://api.anthropic.com" : baseUrl.trim(), key, model, intFromEnvironment("ANTHROPIC_MAX_TOKENS", 1024));
     }
 
     private static int intFromEnvironment(final String name, final int fallback) {

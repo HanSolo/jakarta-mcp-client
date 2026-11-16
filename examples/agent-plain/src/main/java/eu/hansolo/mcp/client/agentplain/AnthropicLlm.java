@@ -15,17 +15,19 @@ import java.net.http.HttpResponse;
 import java.time.Duration;
 
 
-/** The Anthropic Messages API over {@link HttpClient} and JSON-P, without a vendor SDK. One request per call, no streaming. */
+/** The Anthropic Messages API over {@link HttpClient} and JSON-P, without a vendor SDK. One request per call, no streaming. Any server that speaks the same API works, for example a local Ollama. */
 public final class AnthropicLlm implements Llm {
-    private static final URI    ENDPOINT = URI.create("https://api.anthropic.com/v1/messages");
-    private static final String SYSTEM   = "You are a helpful assistant. Use the available tools when they help, and answer briefly.";
+    private static final String SYSTEM = "You are a helpful assistant. Use the available tools when they help, and answer briefly.";
     private final HttpClient http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();
+    private final URI        endpoint;
     private final String     apiKey;
     private final String     model;
     private final int        maxTokens;
 
 
-    public AnthropicLlm(final String apiKey, final String model, final int maxTokens) {
+    /** @param baseUrl the server without the path, for example {@code https://api.anthropic.com} or {@code http://localhost:11434} */
+    public AnthropicLlm(final String baseUrl, final String apiKey, final String model, final int maxTokens) {
+        this.endpoint  = URI.create((baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl) + "/v1/messages");
         this.apiKey    = apiKey;
         this.model     = model;
         this.maxTokens = maxTokens;
@@ -35,7 +37,7 @@ public final class AnthropicLlm implements Llm {
     @Override public JsonArray complete(final JsonArray tools, final JsonArray messages) {
         var body = Json.createObjectBuilder().add("model", model).add("max_tokens", maxTokens).add("system", SYSTEM).add("messages", messages);
         if (!tools.isEmpty()) { body.add("tools", tools); }
-        HttpRequest request = HttpRequest.newBuilder(ENDPOINT).timeout(Duration.ofSeconds(120)).header("content-type", "application/json").header("x-api-key", apiKey).header("anthropic-version", "2023-06-01").POST(HttpRequest.BodyPublishers.ofString(body.build().toString())).build();
+        HttpRequest request = HttpRequest.newBuilder(endpoint).timeout(Duration.ofSeconds(120)).header("content-type", "application/json").header("x-api-key", apiKey).header("anthropic-version", "2023-06-01").POST(HttpRequest.BodyPublishers.ofString(body.build().toString())).build();
         try {
             HttpResponse<String> response = http.send(request, HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() != 200) { throw new IllegalStateException("The Anthropic API answered with status " + response.statusCode() + ": " + response.body()); }
