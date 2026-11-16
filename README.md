@@ -31,11 +31,11 @@ Authorization: the client reads the 401 challenge, finds the authorization serve
 
 ## CDI
 
-`cdi/` builds `mcp-jakarta-client-cdi`: `@Inject @McpConnection("tickets") McpClient client;` with the MicroProfile Config keys `mcp.client.tickets.url`, `.client-id`, `.client-secret`, `.scopes`, `.token-endpoint`, `.bearer-token`, `.timeout-seconds`. Install the core first (`mvn install`), then build `cdi/`. `cdi-it/` is a test WAR (`GET /api/tools`) for checking the injection on a real server; see its pom.
+`cdi/` builds `mcp-jakarta-client-cdi`: `@Inject @McpConnection("tickets") McpClient client;` with the settings (MicroProfile Config where the server has it, otherwise system properties or environment variables) `mcp.client.tickets.url`, `.client-id`, `.client-secret`, `.scopes`, `.token-endpoint`, `.bearer-token`, `.timeout-seconds`. Install the core first (`mvn install`), then build `cdi/`. `cdi-it/` is a test WAR (`GET /api/tools`) for checking the injection on a real server; see its pom.
 
 ## Build and test
 
-Everything in one terminal: `scripts/it.sh` builds the server WARs (expects the server repo next to this one, or `SERVER_REPO=...`), starts the containers, runs all tests and the CDI check, and stops the containers. `--keep` leaves them running, `--stop` removes them, `--no-build` skips the Maven builds. Logs go to `target/it-logs/`. The manual way:
+Everything in one terminal: `scripts/it.sh` builds the server WARs (expects the server repo next to this one, or `SERVER_REPO=...`), starts the containers, runs all tests and the CDI check, and stops the containers. `--server payara|wildfly|liberty` picks the application server the WARs run on (default `payara`, or env `MCP_SERVER`; `MCP_IMAGE` overrides the image). `--keep` leaves them running, `--stop` removes them, `--no-build` skips the Maven builds. Logs go to `target/it-logs/`. On Open Liberty the Keycloak and tickets part is left out (the server's tickets example needs a data source there), so `AuthIT`, `AuthCodeIT` and `PromptsResourcesIT` skip themselves. The CDI module reads its settings from MicroProfile Config where the server has it (Payara) and otherwise from system properties and environment variables (WildFly, Open Liberty); the CI workflow runs all three servers as a matrix. The manual way:
 
 ```
 mvn clean verify
@@ -50,3 +50,5 @@ The integration tests skip themselves without their property: `mcp.fixture.url` 
 - Verified against real servers: discovery, tools, routed headers, progress and cancellation, elicitation, tasks, subscriptions, prompts, resources, completion is covered by a fake only in unit tests plus one integration test against the tickets server, OAuth client credentials with scope step-up, the audience rejection by the server, and the authorization code flow with PKCE against Keycloak.
 - Not verified: the CDI module on WildFly and Open Liberty; the idle watchdog against a real server's keep-alive; `LoopbackAuthorizer` with a real browser (the integration test fills in the login form by HTTP); dynamic client registration and other grants are not implemented.
 - Nothing is published; the API may change before 0.1.0.
+
+- Runs of 2026-11-16 with `scripts/it.sh --server ...`: WildFly 42 (`latest-jdk21`): 52 unit tests and all 23 integration tests, including Keycloak and `AuthCodeIT`, CDI check ok. Open Liberty (`full-java21-openj9-ubi-minimal`): 52 unit tests and 15 integration tests, CDI check ok; the 8 tests that need the Keycloak and tickets stack skip themselves there (see above). The GitHub Action matrix has not been run yet.

@@ -5,8 +5,6 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.context.Dependent;
 import jakarta.enterprise.inject.Produces;
 import jakarta.enterprise.inject.spi.InjectionPoint;
-import org.eclipse.microprofile.config.Config;
-import org.eclipse.microprofile.config.ConfigProvider;
 
 import java.net.URI;
 import java.time.Duration;
@@ -17,7 +15,8 @@ import java.util.concurrent.ConcurrentHashMap;
 @ApplicationScoped
 public class McpClientProducer {
 
-    private final Map<String, McpClient> clients = new ConcurrentHashMap<>();
+    private final Map<String, McpClient> clients  = new ConcurrentHashMap<>();
+    private final Settings                settings = new Settings();
 
 
     @Produces
@@ -29,19 +28,18 @@ public class McpClientProducer {
     }
 
     private McpClient create(String name) {
-        Config config = ConfigProvider.getConfig();
         String prefix = name.isEmpty() ? "mcp.client." : "mcp.client." + name + ".";
-        String url    = config.getOptionalValue(prefix + "url", String.class).orElseThrow(() -> new IllegalStateException("Set " + prefix + "url to use @McpConnection(\"" + name + "\")"));
+        String url    = settings.get(prefix + "url").orElseThrow(() -> new IllegalStateException("Set " + prefix + "url to use @McpConnection(\"" + name + "\")"));
         McpClient.Builder builder = McpClient.builder(URI.create(url));
-        config.getOptionalValue(prefix + "timeout-seconds", Long.class).ifPresent(seconds -> builder.timeout(Duration.ofSeconds(seconds)));
-        var clientId = config.getOptionalValue(prefix + "client-id", String.class);
+        settings.get(prefix + "timeout-seconds").ifPresent(seconds -> builder.timeout(Duration.ofSeconds(Long.parseLong(seconds))));
+        var clientId = settings.get(prefix + "client-id");
         if (clientId.isPresent()) {
-            String   secret = config.getOptionalValue(prefix + "client-secret", String.class).orElseThrow(() -> new IllegalStateException("Set " + prefix + "client-secret"));
-            String[] scopes = config.getOptionalValue(prefix + "scopes", String.class).map(text -> text.trim().split("\\s+")).orElse(new String[0]);
+            String   secret = settings.get(prefix + "client-secret").orElseThrow(() -> new IllegalStateException("Set " + prefix + "client-secret"));
+            String[] scopes = settings.get(prefix + "scopes").map(text -> text.trim().split("\\s+")).orElse(new String[0]);
             builder.oauthClientCredentials(clientId.get(), secret, scopes);
-            config.getOptionalValue(prefix + "token-endpoint", String.class).ifPresent(endpoint -> builder.oauthTokenEndpoint(URI.create(endpoint)));
+            settings.get(prefix + "token-endpoint").ifPresent(endpoint -> builder.oauthTokenEndpoint(URI.create(endpoint)));
         } else {
-            config.getOptionalValue(prefix + "bearer-token", String.class).ifPresent(token -> builder.bearerToken(() -> token));
+            settings.get(prefix + "bearer-token").ifPresent(token -> builder.bearerToken(() -> token));
         }
         return builder.build();
     }
