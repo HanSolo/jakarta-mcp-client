@@ -34,6 +34,10 @@ jobs:
           mvn -B -DskipTests -DskipITs install
           (cd cdi && mvn -B -DskipTests install)
           (cd cdi-it && mvn -B package)
+      - name: Agent example WARs compile and their unit tests pass
+        run: |
+          (cd examples/agent-agentic && mvn -B verify)
+          (cd examples/agent-plain && mvn -B verify)
 
   integration:
     name: Integration tests on ${{ matrix.server }} (Docker)
