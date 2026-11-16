@@ -25,6 +25,10 @@ jobs:
           cache-dependency-path: '**/pom.xml'
       - name: Unit tests (the integration tests skip themselves without their -D properties)
         run: mvn -B verify
+      - name: Release profile builds (sources, javadoc), without signing
+        run: |
+          mvn -B -Prelease -Dgpg.skip=true -DskipTests verify
+          (cd cdi && mvn -B -Prelease -Dgpg.skip=true -DskipTests verify)
       - name: CDI module and CDI test WAR compile
         run: |
           mvn -B -DskipTests -DskipITs install

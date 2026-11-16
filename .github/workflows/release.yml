@@ -1,0 +1,64 @@
+name: Release (bundle only)
+
+# Push a tag such as v0.1.0. The version in the poms stays 0.1.0-SNAPSHOT; the tag sets it for the build.
+# Nothing is uploaded to Maven Central. The workflow builds both modules with sources, javadoc and GPG signatures, collects them in a
+# Central Portal bundle and attaches that bundle to a GitHub PRE-release. Upload the bundle yourself at https://central.sonatype.com/publishing
+# (Publish Component), check the validation result there and press Publish. See RELEASING.md.
+#
+# Repository secrets: GPG_PRIVATE_KEY (armored) and GPG_PASSPHRASE.
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  bundle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+          gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
+          gpg-passphrase: GPG_PASSPHRASE
+      - name: Set the version from the tag
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          mvn -B -q versions:set -DnewVersion="$VERSION" -DgenerateBackupPoms=false
+          (cd cdi && mvn -B -q versions:set -DnewVersion="$VERSION" -DgenerateBackupPoms=false)
+      - name: Core (tests, sources, javadoc, signatures) into the staging directory
+        env:
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        run: mvn -B -Prelease install deploy -DaltDeploymentRepository=staging::file:${{ github.workspace }}/staging
+      - name: CDI module into the same staging directory
+        working-directory: cdi
+        env:
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        run: mvn -B -Prelease deploy -DaltDeploymentRepository=staging::file:${{ github.workspace }}/staging
+      - name: Zip the Central bundle and list what is in it
+        run: |
+          (cd staging && zip -qr "../mcp-jakarta-client-${VERSION}-central-bundle.zip" .)
+          unzip -l "mcp-jakarta-client-${VERSION}-central-bundle.zip"
+          # Central wants a signature and checksums for every file; fail here instead of in the portal.
+          for f in $(cd staging && find . -type f \( -name '*.jar' -o -name '*.pom' \)); do
+            for ext in asc md5 sha1; do
+              [ -f "staging/$f.$ext" ] || { echo "missing $f.$ext"; exit 1; }
+            done
+          done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: central-bundle
+          path: mcp-jakarta-client-*-central-bundle.zip
+      - name: GitHub pre-release with the bundle
+        uses: softprops/action-gh-release@v2
+        with:
+          prerelease: true
+          generate_release_notes: true
+          files: mcp-jakarta-client-*-central-bundle.zip
