@@ -16,8 +16,8 @@ jobs:
     name: Unit tests and module builds
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '21'
@@ -53,16 +53,16 @@ jobs:
       matrix:
         server: [payara, wildfly, liberty]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           path: client
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           repository: ${{ vars.MCP_SERVER_REPO }}
           ref: ${{ vars.MCP_SERVER_REF }}
           token: ${{ secrets.SERVER_REPO_TOKEN || github.token }}
           path: server
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '21'
@@ -77,7 +77,7 @@ jobs:
         run: scripts/it.sh --server ${{ matrix.server }}
       - name: Keep the logs
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: test-logs-${{ matrix.server }}
           path: |
