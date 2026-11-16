@@ -36,7 +36,7 @@ jobs:
       - name: Core (tests, sources, javadoc, signatures) into the staging directory
         env:
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
-        run: mvn -B -Prelease install deploy -DaltDeploymentRepository=staging::file:${{ github.workspace }}/staging
+        run: mvn -B -Prelease deploy -DaltDeploymentRepository=staging::file:${{ github.workspace }}/staging
       - name: CDI module into the same staging directory
         working-directory: cdi
         env:
