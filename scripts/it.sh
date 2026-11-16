@@ -48,7 +48,7 @@ command -v docker >/dev/null || die "docker is not on the PATH"
 docker info >/dev/null 2>&1 || die "the Docker daemon is not running"
 [ -f "$SERVER_REPO/pom.xml" ] || die "no server repo at $SERVER_REPO (set SERVER_REPO=/path/to/jakarta-mcp-server)"
 SERVER_REPO="$(cd "$SERVER_REPO" && pwd)"
-COMPOSE=(docker compose -p "$PROJECT" -f "$SERVER_REPO/keycloak/docker-compose.yml" -f "$SERVER_REPO/keycloak/docker-compose.tickets.yml" -f "$SERVER_REPO/keycloak/docker-compose.nocluster.yml")
+COMPOSE=(docker compose -p "$PROJECT" -f "$SERVER_REPO/keycloak/docker-compose.yml" -f "$SERVER_REPO/keycloak/docker-compose.tickets.yml" -f "$ROOT/scripts/docker-compose.nocluster.yml")
 if [ "$SERVER" = wildfly ]; then
   OVERRIDE_DIR="$(mktemp -d)"   # not under target/: mvn clean deletes that while the containers still need this file
   cat >"$OVERRIDE_DIR/compose-server.yml" <<YML

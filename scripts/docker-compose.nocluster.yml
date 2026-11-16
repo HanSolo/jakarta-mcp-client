@@ -1,0 +1,5 @@
+# Keeps the Payara Micro in the Keycloak/tickets stack from clustering with other Payara containers on the same Docker network.
+services:
+  mcp:
+    environment:
+      PAYARA_ARGS: --nocluster
